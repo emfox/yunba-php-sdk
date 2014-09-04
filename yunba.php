@@ -673,6 +673,8 @@ class Yunba {
 		$this->on("message", array($this, "_messageCallbackMethod"));
 		$this->on("puback", array($this, "_publishCallbackMethod"));
 		$this->on("unsuback", array($this, "_unsubscribeCallbackMethod"));
+		$this->on("set_alias_ack", array($this, "_setAliasCallbackMethod"));
+		$this->on("alias", array($this, "_getAliasCallbackMethod"));
 		$this->_client->init();
 	}
 	
@@ -777,6 +779,54 @@ class Yunba {
 	}
 	
 	/**
+	 * 设置别名
+	 *
+	 * @param array $args 参数，为 alias
+	 * @param callable $setAliasCallback 设置结果回调
+	 * @param callable $messageCallback 消息接收回调
+	 */
+	public function set_alias (array $args, $setAliasCallback = null, $messageCallback = null) {
+		$alias = isset($args["alias"]) ? $args["alias"] : "";
+	
+		if (is_callable($messageCallback)) {
+			if (!isset($this->_messageCallbacks[$alias])) {
+				$this->_messageCallbacks[$alias] = array();
+			}
+			$this->_messageCallbacks[$alias][] = $messageCallback;
+		}
+	
+		$this->emit("set_alias", array(
+				"alias" => $alias
+		), $setAliasCallback);
+	}
+	
+	/**
+	 * 获取别名
+	 *
+	 * @param callable $callback 回调
+	 */
+	public function get_alias ($callback = null) {
+		$this->emit("get_alias", array(), $callback);
+	}
+	
+	/**
+	 * 向用户别名发送消息, 用于实现点对点的消息发送。
+	 *
+	 * @param array $args 参数，包括 alias, msg 两个参数
+	 * @param callable $callback 回调
+	 */
+	public function publish_to_alias (array $args, $callback = null) {
+		if (isset($args["alias"]) and isset($args["msg"])){
+			$alias = $args["alias"];
+			$msg = $args["msg"];
+			$this->emit("publish_to_alias", array(
+					"alias" => $alias,
+					"msg" => $msg
+			), $callback);
+		}
+	}
+	
+	/**
 	 * 等待通讯
 	 */
 	public function wait() {
@@ -847,6 +897,20 @@ class Yunba {
 		$callback = $this->_fetchCallback();
 		if ($callback) {
 			call_user_func($callback, $data["success"]);
+		}
+	}
+	
+	public function _setAliasCallbackMethod($data) {
+		$callback = $this->_fetchCallback();
+		if ($callback) {
+			call_user_func($callback, $data["success"]);
+		}
+	}
+	
+	public function _getAliasCallbackMethod($data) {
+		$callback = $this->_fetchCallback();
+		if ($callback) {
+			call_user_func($callback, $data["alias"]);
 		}
 	}
 	
